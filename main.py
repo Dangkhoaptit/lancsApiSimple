@@ -1,5 +1,5 @@
 
-#
+from crypt import methods
 from time import sleep
 from flask import Flask, jsonify, render_template, request
 from flask_wtf import FlaskForm
@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 import os
 import json
 from wtforms.validators import InputRequired
+from importlib.resources import path
 import socket
 
 
@@ -63,7 +64,6 @@ def show():
             new_data_set =  { flow_entry['detected_application_name'] : { "ip_list" : ip, "host_server_name" : host } }
             AppData.update(new_data_set)
 
-
     x_file_name = 'NewAppIP.json'
     with open(x_file_name, 'w') as json_file:
         str_rp = str(AppData)
@@ -72,12 +72,51 @@ def show():
 
     return "Sussess Send !"
 
+@app.route('/detected_protocol',methods=['GET',"POST"])
+def detected_protocol():
+    data_receive = request.json
+    print("Receive ok")
+
+    with open("detected_protocol_name.json", 'r') as fp:
+        AppData = json.load(fp)
+
+    listObj = data_receive
+    Count = 0
+    for flow_entry in  listObj['flows']['br-lan']:
+        for i in range(0,len(flow_entry)):
+            data_name = listObj['flows']['br-lan'][i]['detected_protocol_name']
+            print(data_name)
+            if data_name not in AppData:
+                new_data_set = {data_name: {"number of appearances": 0}}
+                AppData.update(new_data_set)
+            else:
+                Number_present = AppData[data_name]["number of appearances"]
+                Count = Number_present + 1
+                AppData.update({data_name:{"number of appearances": Count}})
+    
+
+    x_file_name = 'detected_protocol_name.json'
+    with open(x_file_name, 'w') as json_file:
+        str_rp = str(AppData)
+        str_rp = str_rp.replace("'",'"')
+        json_file.write(str_rp)
+
+    return "Send ok !!!!"
+
+
+@app.route('/show_detected_protocol',methods=['GET',"POST"])
+def show_detected_protocol():
+    with open('detected_protocol_name.json','r') as f:
+        data = f.read()
+    return render_template('detect_protocol.html',data = data)
+
+
 @app.route('/Applications', methods=['GET',"POST"])
 def Applications():
     with open('NewAppIP.json','r') as f:
         data = f.read()
-
     return render_template('Applications.html', data = data)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
